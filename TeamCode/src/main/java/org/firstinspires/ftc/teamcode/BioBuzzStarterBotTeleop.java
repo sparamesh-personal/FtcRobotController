@@ -25,6 +25,7 @@ package org.firstinspires.ftc.teamcode;
 
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
@@ -49,9 +50,9 @@ import com.qualcomm.robotcore.hardware.PIDFCoefficients;
  * we will also need to adjust the "PIDF" coefficients with some that are a better fit for our application.
  */
 
-@TeleOp(name = "BioBuzzNotMecanumTeleop", group = "StarterBot")
+@TeleOp(name = "NotMecanumTeleop", group = "StarterBot")
 @Disabled
-public class BioBuzzStarterbotTeleop extends OpMode {
+public class BioBuzzStarterBotTeleop extends OpMode {
 
     // Declare OpMode members.
     private DcMotor leftDrive = null;

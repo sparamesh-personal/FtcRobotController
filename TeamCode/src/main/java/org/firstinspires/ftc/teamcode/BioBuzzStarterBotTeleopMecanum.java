@@ -47,9 +47,9 @@ import com.qualcomm.robotcore.hardware.PIDFCoefficients;
  * we will also need to adjust the "PIDF" coefficients with some that are a better fit for our application.
  */
 
-@TeleOp(name = "BioBuzzMecanumTeleop", group = "StarterBot")
+@TeleOp(name = "MecanumTeleop", group = "StarterBot")
 //@Disabled
-public class BioBuzzStarterbotTeleopMecanum extends OpMode {
+public class BioBuzzStarterBotTeleopMecanum extends OpMode {
 
     // Declare OpMode members.
     private DcMotor leftFrontDrive = null;
