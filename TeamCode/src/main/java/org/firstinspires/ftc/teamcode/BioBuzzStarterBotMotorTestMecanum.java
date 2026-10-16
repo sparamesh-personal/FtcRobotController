@@ -28,6 +28,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
@@ -46,6 +47,8 @@ BioBuzzStarterBotMotorTestMecanum extends OpMode {
     private DcMotor rightBackDrive = null;
     private DcMotor intake = null;
     private CRServo windmillServo = null;
+    private DcMotorEx launcher = null;
+
 
     private final ElapsedTime sequenceTimer = new ElapsedTime();
     private boolean sequenceStarted = false;
@@ -61,6 +64,7 @@ BioBuzzStarterBotMotorTestMecanum extends OpMode {
         rightBackDrive = hardwareMap.get(DcMotor.class, "right_back_drive");
         intake = hardwareMap.get(DcMotor.class, "intake");
         windmillServo = hardwareMap.get(CRServo.class, "windmillServo");
+        launcher = hardwareMap.get(DcMotorEx.class, "launcher");
 
         leftFrontDrive.setDirection(DcMotor.Direction.REVERSE);
         rightFrontDrive.setDirection(DcMotor.Direction.FORWARD);
@@ -72,8 +76,11 @@ BioBuzzStarterBotMotorTestMecanum extends OpMode {
         leftBackDrive.setZeroPowerBehavior(BRAKE);
         rightBackDrive.setZeroPowerBehavior(BRAKE);
         intake.setZeroPowerBehavior(BRAKE);
+        launcher.setZeroPowerBehavior(BRAKE);
+
 
         windmillServo.setDirection(DcMotorSimple.Direction.FORWARD);
+        launcher.setDirection(DcMotorSimple.Direction.FORWARD);
 
         stopAllHardware();
 
@@ -134,6 +141,7 @@ BioBuzzStarterBotMotorTestMecanum extends OpMode {
             setDrivePowers(MOTOR_POWER, 0.0, 0.0, 0.0);
             intake.setPower(0);
             windmillServo.setPower(0);
+            launcher.setPower(0);
         } else if (elapsed < PHASE_SECONDS + PAUSE_SECONDS) {
             currentDevice = "Pause between tests";
             stopAllHardware();
@@ -142,6 +150,7 @@ BioBuzzStarterBotMotorTestMecanum extends OpMode {
             setDrivePowers(0.0, MOTOR_POWER, 0.0, 0.0);
             intake.setPower(0);
             windmillServo.setPower(0);
+            launcher.setPower(0);
         } else if (elapsed < (PHASE_SECONDS + PAUSE_SECONDS) * 2 + PAUSE_SECONDS) {
             currentDevice = "Pause between tests";
             stopAllHardware();
@@ -150,6 +159,7 @@ BioBuzzStarterBotMotorTestMecanum extends OpMode {
             setDrivePowers(0.0, 0.0, MOTOR_POWER, 0.0);
             intake.setPower(0);
             windmillServo.setPower(0);
+            launcher.setPower(0);
         } else if (elapsed < (PHASE_SECONDS + PAUSE_SECONDS) * 3 + PAUSE_SECONDS) {
             currentDevice = "Pause between tests";
             stopAllHardware();
@@ -158,6 +168,7 @@ BioBuzzStarterBotMotorTestMecanum extends OpMode {
             setDrivePowers(0.0, 0.0, 0.0, MOTOR_POWER);
             intake.setPower(0);
             windmillServo.setPower(0);
+            launcher.setPower(0);
         } else if (elapsed < (PHASE_SECONDS + PAUSE_SECONDS) * 4 + PAUSE_SECONDS) {
             currentDevice = "Pause between tests";
             stopAllHardware();
@@ -166,6 +177,7 @@ BioBuzzStarterBotMotorTestMecanum extends OpMode {
             setDrivePowers(0.0, 0.0, 0.0, 0.0);
             intake.setPower(MOTOR_POWER);
             windmillServo.setPower(0);
+            launcher.setPower(0);
         } else if (elapsed < (PHASE_SECONDS + PAUSE_SECONDS) * 5 + PAUSE_SECONDS) {
             currentDevice = "Pause between tests";
             stopAllHardware();
@@ -174,6 +186,16 @@ BioBuzzStarterBotMotorTestMecanum extends OpMode {
             setDrivePowers(0.0, 0.0, 0.0, 0.0);
             intake.setPower(0);
             windmillServo.setPower(SERVO_POWER);
+            launcher.setPower(0);
+        } else if (elapsed < (PHASE_SECONDS + PAUSE_SECONDS) * 5 + PAUSE_SECONDS) {
+            currentDevice = "Pause between tests";
+            stopAllHardware();
+        } else if (elapsed < (PHASE_SECONDS + PAUSE_SECONDS) * 6) {
+            currentDevice = "Windmill";
+            setDrivePowers(0.0, 0.0, 0.0, 0.0);
+            intake.setPower(0);
+            windmillServo.setPower(0);
+            launcher.setPower(MOTOR_POWER);
         } else {
             currentDevice = "Complete";
             stopAllHardware();
@@ -190,6 +212,7 @@ BioBuzzStarterBotMotorTestMecanum extends OpMode {
         telemetry.addData("Right Back", rightBackDrive.getPower());
         telemetry.addData("Intake", intake.getPower());
         telemetry.addData("Windmill Servo", windmillServo.getPower());
+        telemetry.addData("Launcher Motor", launcher.getPower());
         telemetry.addData("Button", "X = rerun, B = stop/reset");
         telemetry.update();
     }
@@ -210,5 +233,6 @@ BioBuzzStarterBotMotorTestMecanum extends OpMode {
         setDrivePowers(0, 0, 0, 0);
         intake.setPower(0);
         windmillServo.setPower(0);
+        launcher.setPower(0);
     }
 }
