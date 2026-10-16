@@ -25,7 +25,6 @@ package org.firstinspires.ftc.teamcode;
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
@@ -52,9 +51,9 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
  * we will also need to adjust the "PIDF" coefficients with some that are a better fit for our application.
  */
 
-@TeleOp(name = "MecanumTeleopFCD", group = "StarterBot")
+@TeleOp(name = "BioBuzzMecanumTeleopFCD", group = "StarterBot")
 //@Disabled
-public class BioBuzzStarterBotTeleopMecanumFCD extends OpMode {
+public class BioBuzzStarterbotTeleopMecanum extends OpMode {
 
     // Declare OpMode members.
     private DcMotor leftFrontDrive = null;
