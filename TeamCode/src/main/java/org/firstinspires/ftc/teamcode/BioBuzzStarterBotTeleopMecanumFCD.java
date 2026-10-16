@@ -53,7 +53,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 @TeleOp(name = "BioBuzzMecanumTeleopFCD", group = "StarterBot")
 //@Disabled
-public class BioBuzzStarterbotTeleopMecanum extends OpMode {
+public class BioBuzzStarterBotTeleopMecanumFCD extends OpMode {
 
     // Declare OpMode members.
     private DcMotor leftFrontDrive = null;

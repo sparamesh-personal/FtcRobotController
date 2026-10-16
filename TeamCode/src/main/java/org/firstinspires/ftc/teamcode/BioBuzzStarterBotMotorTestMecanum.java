@@ -32,7 +32,8 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 @TeleOp(name = "MecanumMotorTest", group = "StarterBot")
-public class BioBuzzStarterBotMotorTestMecanum extends OpMode {
+public class
+BioBuzzStarterBotMotorTestMecanum extends OpMode {
 
     private static final double MOTOR_POWER = 0.55;
     private static final double SERVO_POWER = 0.75;
@@ -59,7 +60,7 @@ public class BioBuzzStarterBotMotorTestMecanum extends OpMode {
         leftBackDrive = hardwareMap.get(DcMotor.class, "left_back_drive");
         rightBackDrive = hardwareMap.get(DcMotor.class, "right_back_drive");
         intake = hardwareMap.get(DcMotor.class, "intake");
-        windmillServo = hardwareMap.get(CRServo.class, "windmill");
+        windmillServo = hardwareMap.get(CRServo.class, "windmillServo");
 
         leftFrontDrive.setDirection(DcMotor.Direction.REVERSE);
         rightFrontDrive.setDirection(DcMotor.Direction.FORWARD);
@@ -72,7 +73,7 @@ public class BioBuzzStarterBotMotorTestMecanum extends OpMode {
         rightBackDrive.setZeroPowerBehavior(BRAKE);
         intake.setZeroPowerBehavior(BRAKE);
 
-        windmillServo.setDirection(DcMotorSimple.Direction.REVERSE);
+        windmillServo.setDirection(DcMotorSimple.Direction.FORWARD);
 
         stopAllHardware();
 
