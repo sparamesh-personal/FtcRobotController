@@ -31,6 +31,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 /*
  * This file includes a teleop (driver-controlled) file for the goBILDA® StarterBot with Mecanum
@@ -89,6 +90,17 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
 
     // Create a variable to set to the intake.
     double intakePower;
+    private final ElapsedTime encoderSampleTimer = new ElapsedTime();
+    private int previousLeftFrontPosition;
+    private int previousRightFrontPosition;
+    private int previousLeftBackPosition;
+    private int previousRightBackPosition;
+    private int previousIntakePosition;
+    private double leftFrontTicksPerSecond;
+    private double rightFrontTicksPerSecond;
+    private double leftBackTicksPerSecond;
+    private double rightBackTicksPerSecond;
+    private double intakeTicksPerSecond;
 
     /*
      * Code to run ONCE when the driver hits INIT
@@ -178,6 +190,12 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
      */
     @Override
     public void start() {
+        previousLeftFrontPosition = leftFrontDrive.getCurrentPosition();
+        previousRightFrontPosition = rightFrontDrive.getCurrentPosition();
+        previousLeftBackPosition = leftBackDrive.getCurrentPosition();
+        previousRightBackPosition = rightBackDrive.getCurrentPosition();
+        previousIntakePosition = intake.getCurrentPosition();
+        encoderSampleTimer.reset();
     }
 
     /*
@@ -185,6 +203,8 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
      */
     @Override
     public void loop() {
+        updateEncoderRates();
+
         /*
          * Here we call a function called mecanumDrive. The mecanumDrive function takes the input from
          * the joysticks, and applies power to the drive motors to move the robot as requested
@@ -228,8 +248,26 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         /*
          * Show motor powers on the Driver Station via telemetry.
          */
-        telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftFrontPower, rightFrontPower);
-        telemetry.addData("Triggers", "left (%.2f, right (%.2f)",gamepad1.left_trigger, gamepad1.right_trigger);
+        telemetry.addData("Drive LF", "p %.2f | %d ticks | %.0f ticks/s",
+            leftFrontPower, leftFrontDrive.getCurrentPosition(), leftFrontTicksPerSecond);
+        telemetry.addData("Drive RF", "p %.2f | %d ticks | %.0f ticks/s",
+            rightFrontPower, rightFrontDrive.getCurrentPosition(), rightFrontTicksPerSecond);
+        telemetry.addData("Drive LB", "p %.2f | %d ticks | %.0f ticks/s",
+            leftBackPower, leftBackDrive.getCurrentPosition(), leftBackTicksPerSecond);
+        telemetry.addData("Drive RB", "p %.2f | %d ticks | %.0f ticks/s",
+            rightBackPower, rightBackDrive.getCurrentPosition(), rightBackTicksPerSecond);
+        telemetry.addData("Drive Inputs", "forward %.2f | strafe %.2f | turn %.2f",
+            -gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
+        telemetry.addData("Intake Motor", "p %.2f | %d ticks | %.0f ticks/s",
+            intake.getPower(), intake.getCurrentPosition(), intakeTicksPerSecond);
+        telemetry.addData("Intake Servos", "left p %.2f | right p %.2f",
+            leftIntakeServo.getPower(), rightIntakeServo.getPower());
+        telemetry.addData("Windmill", "p %.2f", windmillServo.getPower());
+        telemetry.addData("Launcher", "target %d | measured %.0f ticks/s",
+            gamepad1.right_bumper ? LAUNCHER_TARGET_VELOCITY : 0, launcher.getVelocity());
+        telemetry.addData("Intake Triggers", "in %.2f | reverse %.2f | final p %.2f",
+            gamepad1.right_trigger, gamepad1.left_trigger, intake.getPower());
+        telemetry.update();
     }
 
     /*
@@ -293,5 +331,31 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         } else {
             windmillServo.setPower(0);
         }
+    }
+
+    private void updateEncoderRates() {
+        double elapsedSeconds = encoderSampleTimer.seconds();
+        if (elapsedSeconds <= 0) {
+            return;
+        }
+
+        int leftFrontPosition = leftFrontDrive.getCurrentPosition();
+        int rightFrontPosition = rightFrontDrive.getCurrentPosition();
+        int leftBackPosition = leftBackDrive.getCurrentPosition();
+        int rightBackPosition = rightBackDrive.getCurrentPosition();
+        int intakePosition = intake.getCurrentPosition();
+
+        leftFrontTicksPerSecond = (leftFrontPosition - previousLeftFrontPosition) / elapsedSeconds;
+        rightFrontTicksPerSecond = (rightFrontPosition - previousRightFrontPosition) / elapsedSeconds;
+        leftBackTicksPerSecond = (leftBackPosition - previousLeftBackPosition) / elapsedSeconds;
+        rightBackTicksPerSecond = (rightBackPosition - previousRightBackPosition) / elapsedSeconds;
+        intakeTicksPerSecond = (intakePosition - previousIntakePosition) / elapsedSeconds;
+
+        previousLeftFrontPosition = leftFrontPosition;
+        previousRightFrontPosition = rightFrontPosition;
+        previousLeftBackPosition = leftBackPosition;
+        previousRightBackPosition = rightBackPosition;
+        previousIntakePosition = intakePosition;
+        encoderSampleTimer.reset();
     }
 }
