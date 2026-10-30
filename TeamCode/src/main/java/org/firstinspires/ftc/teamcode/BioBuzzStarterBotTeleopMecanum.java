@@ -1,24 +1,4 @@
-/*   MIT License
- *   Copyright (c) [2026] [Base 10 Assets, LLC]
- *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy
- *   of this software and associated documentation files (the "Software"), to deal
- *   in the Software without restriction, including without limitation the rights
- *   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- *   copies of the Software, and to permit persons to whom the Software is
- *   furnished to do so, subject to the following conditions:
 
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
-
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- *   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- *   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- *   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- *   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- *   SOFTWARE.
- */
 
 package org.firstinspires.ftc.teamcode;
 
@@ -33,27 +13,11 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-/*
- * This file includes a teleop (driver-controlled) file for the goBILDA® StarterBot with Mecanum
- * Wheels for the 2026-2027 FIRST® Tech Challenge. On top of a mecanum wheel drivetrain, it uses
- * one motor driving an intake roller, two servos which pull elements out of corners, and a high-speed
- * launcher motor.
- *
- * Likely the most niche concept we'll use in this example is closed-loop motor velocity control.
- * This control method reads the current speed as reported by the motor's encoder and applies a varying
- * amount of power to reach, and then hold a target velocity. The FTC SDK calls this control method
- * "RUN_USING_ENCODER". This contrasts to the default "RUN_WITHOUT_ENCODER" where you control the power
- * applied to the motor directly.
- * Since the dynamics of a launcher wheel system varies greatly from those of most other FTC mechanisms,
- * we will also need to adjust the "PIDF" coefficients with some that are a better fit for our application.
- */
 
 @TeleOp(name = "MecanumTeleop", group = "StarterBot")
 //@Disabled
 public class BioBuzzStarterBotTeleopMecanum extends OpMode {
 
-    // Declare OpMode members.
-    // Declare OpMode members.
     // Declare OpMode members.
     private DcMotor leftFrontDrive = null;
     private DcMotor leftBackDrive = null;
@@ -76,8 +40,8 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
      * in the launch() function to only run the windmill servo when the motor is spinning fast
      * enough to make a successful throw.
      */
-    public final int LAUNCHER_TARGET_VELOCITY = 1250; //2678 RPM
-    public final int LAUNCHER_MIN_VELOCITY = 1200; //2571 RPM
+    public final int LAUNCHER_TARGET_VELOCITY = 600; //2678 RPM
+    public final int LAUNCHER_MIN_VELOCITY = 600; //2571 RPM
 
 
     /*
@@ -154,7 +118,11 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
          * right to a number much higher than your set point, make sure that your encoders are plugged
          * into the port right beside the motor itself. And that the motors polarity is consistent
          * through any wiring.
+         *
+         * The launcher direction is REVERSED so it spins the opposite way. setDirection flips both
+         * the motor output and the encoder reading, so getVelocity() stays positive.
          */
+        launcher.setDirection(DcMotorSimple.Direction.REVERSE);
 
         launcher.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
@@ -282,10 +250,10 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
     }
 
     void mecanumDrive(double forward, double strafe, double rotate) {
-        leftFrontPower = forward + strafe + rotate;
-        rightFrontPower = forward - strafe - rotate;
-        leftBackPower = forward - strafe + rotate;
-        rightBackPower = forward + strafe - rotate;
+        leftFrontPower = -forward - strafe - rotate;
+        rightFrontPower = -forward + strafe + rotate;
+        leftBackPower = -forward + strafe - rotate;
+        rightBackPower = -forward -  strafe + rotate;
 
         double max = Math.max(Math.abs(leftFrontPower), Math.abs(rightFrontPower));
         max = Math.max(max, Math.abs(leftBackPower));
@@ -328,10 +296,17 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
          * windmill servo to start feeding the elements into the launcher motor. We also
          * add some power to the intake power. This can sometimes help dislodge stuck elements from
          * inside the hopper.
+         *
+         * Otherwise, the windmill can be run manually: A feeds forward and B reverses to clear
+         * jams, regardless of launcher speed.
          */
         if (gamepad1.right_bumper && launcher.getVelocity() > LAUNCHER_MIN_VELOCITY) {
             windmillServo.setPower(1);
             intakePower += 0.5;
+        } else if (gamepad1.a) {
+            windmillServo.setPower(1);    // manual feed
+        } else if (gamepad1.b) {
+            windmillServo.setPower(-1);   // manual reverse, to clear jams
         } else {
             windmillServo.setPower(0);
         }
