@@ -44,7 +44,8 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
     private static final double SPIN_UP_TIME_SECONDS = 1.50;
     private static final double FEED_TIME_SECONDS = 1.50;
     private static final double FEED_POWER = 0.80;
-    private static final double LAUNCHER_STICK_TRIM_LIMIT = 0.20;
+    private static final double LAUNCHER_STICK_TRIM_RATE = 0.20;
+    private static final double LAUNCHER_STICK_DEADBAND = 0.05;
 
     private enum LaunchState {
         IDLE,
@@ -55,11 +56,13 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
     private LaunchState launchState = LaunchState.IDLE;
     private double launcherBasePower;
     private double launcherPower;
+    private double launcherStickTrim;
     private boolean previousLeftBumper;
     private boolean previousRightBumper;
     private String selectedArtifact = "None";
     private final ElapsedTime feedTimer = new ElapsedTime();
     private final ElapsedTime spinUpTimer = new ElapsedTime();
+    private final ElapsedTime launcherTrimTimer = new ElapsedTime();
 
 
     /*
@@ -185,12 +188,15 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         previousRightBackPosition = rightBackDrive.getCurrentPosition();
         previousIntakePosition = intake.getCurrentPosition();
         encoderSampleTimer.reset();
+        launcherTrimTimer.reset();
+        launcherStickTrim = 0;
         previousLeftBumper = false;
         previousRightBumper = false;
         launchState = LaunchState.IDLE;
         selectedArtifact = "None";
         launcherBasePower = 0;
         launcherPower = 0;
+        launcherStickTrim = 0;
     }
 
     /*
@@ -199,6 +205,7 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
     @Override
     public void loop() {
         updateEncoderRates();
+        updateLauncherStickTrim();
 
         /*
          * Here we call a function called mecanumDrive. The mecanumDrive function takes the input from
@@ -262,8 +269,10 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         telemetry.addData("Selected Artifact", selectedArtifact);
         telemetry.addData("Launcher Power", "base %.2f | adjusted %.2f | motor %.2f",
                 launcherBasePower, launcherPower, launcher.getPower());
-        telemetry.addData("Launcher Stick Trim", "%.2f (up increases)",
-                getLauncherStickTrim());
+        telemetry.addData("Launcher Stick Raw", "x %.2f | y %.2f",
+                gamepad1.right_stick_x, gamepad1.right_stick_y);
+        telemetry.addData("Launcher Stick Trim", "%.2f (hold up/down to tune)",
+                launcherStickTrim);
         telemetry.addData("Launcher Motor", "mode %s | position %d | velocity %.0f ticks/s",
                 launcher.getMode(), launcher.getCurrentPosition(), launcher.getVelocity());
         telemetry.addData("Spin-Up Progress", "%.2f of %.2f seconds",
@@ -292,6 +301,7 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         selectedArtifact = "None";
         launcherBasePower = 0;
         launcherPower = 0;
+        launcherStickTrim = 0;
     }
 
     void mecanumDrive(double forward, double strafe, double rotate) {
@@ -320,12 +330,26 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         rightBackDrive.setPower(rightBackPower);
     }
 
+    private void updateLauncherStickTrim() {
+        double elapsedSeconds = launcherTrimTimer.seconds();
+        launcherTrimTimer.reset();
+        if (elapsedSeconds <= 0) {
+            return;
+        }
+
+        double stickY = gamepad1.right_stick_y;
+        if (Math.abs(stickY) >= LAUNCHER_STICK_DEADBAND) {
+            launcherStickTrim += -stickY * LAUNCHER_STICK_TRIM_RATE * elapsedSeconds;
+            launcherStickTrim = Math.max(-0.50, Math.min(0.50, launcherStickTrim));
+        }
+    }
+
     private double getLauncherStickTrim() {
-        return -gamepad1.right_stick_y * LAUNCHER_STICK_TRIM_LIMIT;
+        return launcherStickTrim;
     }
 
     private double adjustedLauncherPower() {
-        double adjustedPower = launcherBasePower + getLauncherStickTrim();
+        double adjustedPower = launcherBasePower + launcherStickTrim;
         return Math.max(0.0, Math.min(1.0, adjustedPower));
     }
 
