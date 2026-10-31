@@ -44,6 +44,7 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
     private static final double SPIN_UP_TIME_SECONDS = 1.50;
     private static final double FEED_TIME_SECONDS = 1.50;
     private static final double FEED_POWER = 0.80;
+    private static final double LAUNCHER_STICK_TRIM_LIMIT = 0.20;
 
     private enum LaunchState {
         IDLE,
@@ -52,6 +53,7 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
     }
 
     private LaunchState launchState = LaunchState.IDLE;
+    private double launcherBasePower;
     private double launcherPower;
     private boolean previousLeftBumper;
     private boolean previousRightBumper;
@@ -187,6 +189,7 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         previousRightBumper = false;
         launchState = LaunchState.IDLE;
         selectedArtifact = "None";
+        launcherBasePower = 0;
         launcherPower = 0;
     }
 
@@ -257,8 +260,10 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         telemetry.addData("Windmill", "p %.2f", windmillServo.getPower());
         telemetry.addData("Launcher State", launchState);
         telemetry.addData("Selected Artifact", selectedArtifact);
-        telemetry.addData("Launcher Power", "target %.2f | motor %.2f",
-                launcherPower, launcher.getPower());
+        telemetry.addData("Launcher Power", "base %.2f | adjusted %.2f | motor %.2f",
+                launcherBasePower, launcherPower, launcher.getPower());
+        telemetry.addData("Launcher Stick Trim", "%.2f (up increases)",
+                getLauncherStickTrim());
         telemetry.addData("Launcher Motor", "mode %s | position %d | velocity %.0f ticks/s",
                 launcher.getMode(), launcher.getCurrentPosition(), launcher.getVelocity());
         telemetry.addData("Spin-Up Progress", "%.2f of %.2f seconds",
@@ -285,6 +290,7 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         windmillServo.setPower(0);
         launchState = LaunchState.IDLE;
         selectedArtifact = "None";
+        launcherBasePower = 0;
         launcherPower = 0;
     }
 
@@ -314,17 +320,28 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         rightBackDrive.setPower(rightBackPower);
     }
 
+    private double getLauncherStickTrim() {
+        return -gamepad1.right_stick_y * LAUNCHER_STICK_TRIM_LIMIT;
+    }
+
+    private double adjustedLauncherPower() {
+        double adjustedPower = launcherBasePower + getLauncherStickTrim();
+        return Math.max(0.0, Math.min(1.0, adjustedPower));
+    }
+
     void launch() {
         boolean leftBumperPressed = gamepad1.left_bumper && !previousLeftBumper;
         boolean rightBumperPressed = gamepad1.right_bumper && !previousRightBumper;
 
         if (launchState == LaunchState.IDLE && leftBumperPressed) {
-            launcherPower = POLLEN_LAUNCHER_POWER;
+            launcherBasePower = POLLEN_LAUNCHER_POWER;
+            launcherPower = adjustedLauncherPower();
             selectedArtifact = "Pollen";
             launchState = LaunchState.SPIN_UP;
             spinUpTimer.reset();
         } else if (launchState == LaunchState.IDLE && rightBumperPressed) {
-            launcherPower = NECTAR_LAUNCHER_POWER;
+            launcherBasePower = NECTAR_LAUNCHER_POWER;
+            launcherPower = adjustedLauncherPower();
             selectedArtifact = "Nectar";
             launchState = LaunchState.SPIN_UP;
             spinUpTimer.reset();
@@ -332,6 +349,10 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
 
         previousLeftBumper = gamepad1.left_bumper;
         previousRightBumper = gamepad1.right_bumper;
+
+        if (launchState != LaunchState.IDLE) {
+            launcherPower = adjustedLauncherPower();
+        }
 
         if (launchState == LaunchState.SPIN_UP) {
             launcher.setPower(launcherPower);
@@ -350,6 +371,7 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
 
             if (feedTime >= FEED_TIME_SECONDS) {
                 launchState = LaunchState.IDLE;
+                launcherBasePower = 0;
                 launcherPower = 0;
                 selectedArtifact = "None (shot complete)";
                 windmillServo.setPower(0);
