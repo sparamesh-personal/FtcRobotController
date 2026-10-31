@@ -10,7 +10,6 @@ import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 
@@ -40,12 +39,12 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
      * in the launch() function to only run the windmill servo when the motor is spinning fast
      * enough to make a successful throw.
      */
-    public final int POLLEN_TARGET_VELOCITY = 600;
-    public final int POLLEN_MIN_VELOCITY = 550;
-    public final int NECTAR_TARGET_VELOCITY = 700;
-    public final int NECTAR_MIN_VELOCITY = 650;
-    private static final double FEED_TIME_SECONDS = 0.35;
-    private static final double SPIN_UP_TIMEOUT_SECONDS = 3.0;
+    public final double POLLEN_LAUNCHER_POWER = 0.65;
+    public final double NECTAR_LAUNCHER_POWER = 0.80;
+    private static final double SPIN_UP_TIME_SECONDS = 1.50;
+    private static final double FEED_TIME_SECONDS = 0.50;
+    private static final double FEED_POWER = 0.60;
+    private static final double FEED_EASE_OUT_SECONDS = 0.15;
 
     private enum LaunchState {
         IDLE,
@@ -54,8 +53,7 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
     }
 
     private LaunchState launchState = LaunchState.IDLE;
-    private int launcherTargetVelocity;
-    private int launcherMinVelocity;
+    private double launcherPower;
     private boolean previousLeftBumper;
     private boolean previousRightBumper;
     private String selectedArtifact = "None";
@@ -143,10 +141,8 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
          */
         launcher.setDirection(DcMotorSimple.Direction.REVERSE);
 
-        launcher.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        launcher.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(40, 0, 0, 12.5));
-        launcher.setVelocity(0);
+        launcher.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        launcher.setPower(0);
 
         /*
          * set Feeders to an initial value to initialize the servo controller
@@ -192,6 +188,7 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         previousRightBumper = false;
         launchState = LaunchState.IDLE;
         selectedArtifact = "None";
+        launcherPower = 0;
     }
 
     /*
@@ -261,17 +258,17 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         telemetry.addData("Windmill", "p %.2f", windmillServo.getPower());
         telemetry.addData("Launcher State", launchState);
         telemetry.addData("Selected Artifact", selectedArtifact);
-        telemetry.addData("Launcher Targets", "target %d | minimum %d ticks/s",
-                launcherTargetVelocity, launcherMinVelocity);
-        telemetry.addData("Launcher Motor", "mode %s | power %.2f | position %d",
-                launcher.getMode(), launcher.getPower(), launcher.getCurrentPosition());
-        telemetry.addData("Launcher Velocity", "signed %.0f | magnitude %.0f ticks/s",
-                launcher.getVelocity(), Math.abs(launcher.getVelocity()));
-        telemetry.addData("Launcher Threshold", "%.0f of %d ticks/s reached",
-                Math.abs(launcher.getVelocity()), launcherMinVelocity);
-        telemetry.addData("Launcher Timers", "spin-up %.2f s | feed %.2f s",
-                launchState == LaunchState.SPIN_UP ? spinUpTimer.seconds() : 0,
-                launchState == LaunchState.FEED ? feedTimer.seconds() : 0);
+        telemetry.addData("Launcher Power", "target %.2f | motor %.2f",
+                launcherPower, launcher.getPower());
+        telemetry.addData("Launcher Motor", "mode %s | position %d | velocity %.0f ticks/s",
+                launcher.getMode(), launcher.getCurrentPosition(), launcher.getVelocity());
+        telemetry.addData("Spin-Up Progress", "%.2f of %.2f seconds",
+                launchState == LaunchState.SPIN_UP ? spinUpTimer.seconds() : 0.0,
+                SPIN_UP_TIME_SECONDS);
+        telemetry.addData("Windmill", "power %.2f", windmillServo.getPower());
+        telemetry.addData("Launch Timers", "spin-up %.2f s | feed %.2f s",
+                launchState == LaunchState.SPIN_UP ? spinUpTimer.seconds() : 0.0,
+                launchState == LaunchState.FEED ? feedTimer.seconds() : 0.0);
         telemetry.addData("Bumpers", "left %s | right %s",
                 gamepad1.left_bumper ? "pressed" : "released",
                 gamepad1.right_bumper ? "pressed" : "released");
@@ -285,13 +282,11 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
      */
     @Override
     public void stop() {
-        launcher.setVelocity(0);
         launcher.setPower(0);
         windmillServo.setPower(0);
         launchState = LaunchState.IDLE;
         selectedArtifact = "None";
-        launcherTargetVelocity = 0;
-        launcherMinVelocity = 0;
+        launcherPower = 0;
     }
 
     void mecanumDrive(double forward, double strafe, double rotate) {
@@ -325,14 +320,12 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         boolean rightBumperPressed = gamepad1.right_bumper && !previousRightBumper;
 
         if (launchState == LaunchState.IDLE && leftBumperPressed) {
-            launcherTargetVelocity = POLLEN_TARGET_VELOCITY;
-            launcherMinVelocity = POLLEN_MIN_VELOCITY;
+            launcherPower = POLLEN_LAUNCHER_POWER;
             selectedArtifact = "Pollen";
             launchState = LaunchState.SPIN_UP;
             spinUpTimer.reset();
         } else if (launchState == LaunchState.IDLE && rightBumperPressed) {
-            launcherTargetVelocity = NECTAR_TARGET_VELOCITY;
-            launcherMinVelocity = NECTAR_MIN_VELOCITY;
+            launcherPower = NECTAR_LAUNCHER_POWER;
             selectedArtifact = "Nectar";
             launchState = LaunchState.SPIN_UP;
             spinUpTimer.reset();
@@ -342,47 +335,43 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         previousRightBumper = gamepad1.right_bumper;
 
         if (launchState == LaunchState.SPIN_UP) {
-            launcher.setVelocity(launcherTargetVelocity);
+            launcher.setPower(launcherPower);
+            windmillServo.setPower(0);
 
-            if (Math.abs(launcher.getVelocity()) >= launcherMinVelocity) {
+            if (spinUpTimer.seconds() >= SPIN_UP_TIME_SECONDS) {
                 launchState = LaunchState.FEED;
                 feedTimer.reset();
-            } else if (spinUpTimer.seconds() >= SPIN_UP_TIMEOUT_SECONDS) {
-                launchState = LaunchState.IDLE;
-                selectedArtifact = selectedArtifact + " (spin-up timeout)";
-                launcherTargetVelocity = 0;
-                launcherMinVelocity = 0;
-                windmillServo.setPower(0);
-                launcher.setVelocity(0);
-                launcher.setPower(0);
             }
         } else if (launchState == LaunchState.FEED) {
-            launcher.setVelocity(launcherTargetVelocity);
-            windmillServo.setPower(1);
+            launcher.setPower(launcherPower);
+
+            double feedTime = feedTimer.seconds();
+            double easeOutStart = FEED_TIME_SECONDS - FEED_EASE_OUT_SECONDS;
+            double windmillPower = FEED_POWER;
+            if (feedTime >= easeOutStart) {
+                double easeOutProgress = (feedTime - easeOutStart) / FEED_EASE_OUT_SECONDS;
+                windmillPower *= Math.max(0.0, 1.0 - easeOutProgress);
+            }
+            windmillServo.setPower(windmillPower);
             intakePower += 0.5;
 
-            if (feedTimer.seconds() >= FEED_TIME_SECONDS) {
+            if (feedTime >= FEED_TIME_SECONDS) {
                 launchState = LaunchState.IDLE;
-                launcherTargetVelocity = 0;
-                launcherMinVelocity = 0;
+                launcherPower = 0;
                 selectedArtifact = "None (shot complete)";
                 windmillServo.setPower(0);
-                launcher.setVelocity(0);
+                launcher.setPower(0);
             }
         } else {
-            launcher.setVelocity(0);
+            launcher.setPower(0);
 
             if (gamepad1.a) {
-                windmillServo.setPower(1);    // manual feed
+                windmillServo.setPower(FEED_POWER);    // manual feed
             } else if (gamepad1.b) {
-                windmillServo.setPower(-1);   // manual reverse, to clear jams
+                windmillServo.setPower(-FEED_POWER);   // manual reverse, to clear jams
             } else {
                 windmillServo.setPower(0);
             }
-        }
-
-        if (launchState == LaunchState.SPIN_UP) {
-            windmillServo.setPower(0);
         }
     }
 
