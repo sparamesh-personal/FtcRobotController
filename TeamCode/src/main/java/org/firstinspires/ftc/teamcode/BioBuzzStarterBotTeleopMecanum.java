@@ -42,9 +42,8 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
     public final double POLLEN_LAUNCHER_POWER = 0.65;
     public final double NECTAR_LAUNCHER_POWER = 0.80;
     private static final double SPIN_UP_TIME_SECONDS = 1.50;
-    private static final double FEED_TIME_SECONDS = 0.50;
-    private static final double FEED_POWER = 0.60;
-    private static final double FEED_EASE_OUT_SECONDS = 0.15;
+    private static final double FEED_TIME_SECONDS = 1.50;
+    private static final double FEED_POWER = 0.80;
 
     private enum LaunchState {
         IDLE,
@@ -346,13 +345,7 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
             launcher.setPower(launcherPower);
 
             double feedTime = feedTimer.seconds();
-            double easeOutStart = FEED_TIME_SECONDS - FEED_EASE_OUT_SECONDS;
-            double windmillPower = FEED_POWER;
-            if (feedTime >= easeOutStart) {
-                double easeOutProgress = (feedTime - easeOutStart) / FEED_EASE_OUT_SECONDS;
-                windmillPower *= Math.max(0.0, 1.0 - easeOutProgress);
-            }
-            windmillServo.setPower(windmillPower);
+            windmillServo.setPower(FEED_POWER);
             intakePower += 0.5;
 
             if (feedTime >= FEED_TIME_SECONDS) {
