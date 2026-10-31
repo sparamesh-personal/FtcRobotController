@@ -40,8 +40,24 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
      * in the launch() function to only run the windmill servo when the motor is spinning fast
      * enough to make a successful throw.
      */
-    public final int LAUNCHER_TARGET_VELOCITY = 600; //2678 RPM
-    public final int LAUNCHER_MIN_VELOCITY = 600; //2571 RPM
+    public final int POLLEN_TARGET_VELOCITY = 600;
+    public final int POLLEN_MIN_VELOCITY = 550;
+    public final int NECTAR_TARGET_VELOCITY = 700;
+    public final int NECTAR_MIN_VELOCITY = 650;
+    private static final double FEED_TIME_SECONDS = 0.35;
+
+    private enum LaunchState {
+        IDLE,
+        SPIN_UP,
+        FEED
+    }
+
+    private LaunchState launchState = LaunchState.IDLE;
+    private int launcherTargetVelocity;
+    private int launcherMinVelocity;
+    private boolean previousLeftBumper;
+    private boolean previousRightBumper;
+    private final ElapsedTime feedTimer = new ElapsedTime();
 
 
     /*
@@ -168,6 +184,9 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         previousRightBackPosition = rightBackDrive.getCurrentPosition();
         previousIntakePosition = intake.getCurrentPosition();
         encoderSampleTimer.reset();
+        previousLeftBumper = false;
+        previousRightBumper = false;
+        launchState = LaunchState.IDLE;
     }
 
     /*
@@ -235,8 +254,9 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         telemetry.addData("Intake Servos", "left p %.2f | right p %.2f",
                 leftIntakeServo.getPower(), rightIntakeServo.getPower());
         telemetry.addData("Windmill", "p %.2f", windmillServo.getPower());
-        telemetry.addData("Launcher", "target %d | measured %.0f ticks/s",
-                gamepad1.right_bumper ? LAUNCHER_TARGET_VELOCITY : 0, launcher.getVelocity());
+        telemetry.addData("Launcher", "%s | target %d | measured %.0f ticks/s",
+                launchState, launcherTargetVelocity, launcher.getVelocity());
+        telemetry.addData("Shot Selection", "left=pollen | right=nectar");
         telemetry.addData("Intake Triggers", "in %.2f | reverse %.2f | final p %.2f",
                 gamepad1.right_trigger, gamepad1.left_trigger, intake.getPower());
         telemetry.update();
@@ -276,38 +296,54 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
     }
 
     void launch() {
-        /*
-         * Calling gamepad1.right_bumper returns a boolean which will be true if the bumper is
-         * held down, and false if it is not. Notably, this will continue to be true for every
-         * cycle of our code that the driver holds down that bumper.
-         * The first step of our launch() function is checking to see if the user is currently
-         * holding down the right gamepad. If they are, then we want to start spinning up the launcher.
-         * Otherwise, we start spinning the launcher down.
-         */
-        if (gamepad1.right_bumper) {
-            launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
-        } else {
-            launcher.setVelocity(0);
+        boolean leftBumperPressed = gamepad1.left_bumper && !previousLeftBumper;
+        boolean rightBumperPressed = gamepad1.right_bumper && !previousRightBumper;
+
+        if (launchState == LaunchState.IDLE && leftBumperPressed) {
+            launcherTargetVelocity = POLLEN_TARGET_VELOCITY;
+            launcherMinVelocity = POLLEN_MIN_VELOCITY;
+            launchState = LaunchState.SPIN_UP;
+        } else if (launchState == LaunchState.IDLE && rightBumperPressed) {
+            launcherTargetVelocity = NECTAR_TARGET_VELOCITY;
+            launcherMinVelocity = NECTAR_MIN_VELOCITY;
+            launchState = LaunchState.SPIN_UP;
         }
 
-        /*
-         * Here we ask if the driver is currently pressing the right bumper, AND the launcher is
-         * spinning fast enough to make a successful shot. If it is, then we will turn on the
-         * windmill servo to start feeding the elements into the launcher motor. We also
-         * add some power to the intake power. This can sometimes help dislodge stuck elements from
-         * inside the hopper.
-         *
-         * Otherwise, the windmill can be run manually: A feeds forward and B reverses to clear
-         * jams, regardless of launcher speed.
-         */
-        if (gamepad1.right_bumper && launcher.getVelocity() > LAUNCHER_MIN_VELOCITY) {
+        previousLeftBumper = gamepad1.left_bumper;
+        previousRightBumper = gamepad1.right_bumper;
+
+        if (launchState == LaunchState.SPIN_UP) {
+            launcher.setVelocity(launcherTargetVelocity);
+
+            if (launcher.getVelocity() >= launcherMinVelocity) {
+                launchState = LaunchState.FEED;
+                feedTimer.reset();
+            }
+        } else if (launchState == LaunchState.FEED) {
+            launcher.setVelocity(launcherTargetVelocity);
             windmillServo.setPower(1);
             intakePower += 0.5;
-        } else if (gamepad1.a) {
-            windmillServo.setPower(1);    // manual feed
-        } else if (gamepad1.b) {
-            windmillServo.setPower(-1);   // manual reverse, to clear jams
+
+            if (feedTimer.seconds() >= FEED_TIME_SECONDS) {
+                launchState = LaunchState.IDLE;
+                launcherTargetVelocity = 0;
+                launcherMinVelocity = 0;
+                windmillServo.setPower(0);
+                launcher.setVelocity(0);
+            }
         } else {
+            launcher.setVelocity(0);
+
+            if (gamepad1.a) {
+                windmillServo.setPower(1);    // manual feed
+            } else if (gamepad1.b) {
+                windmillServo.setPower(-1);   // manual reverse, to clear jams
+            } else {
+                windmillServo.setPower(0);
+            }
+        }
+
+        if (launchState == LaunchState.SPIN_UP) {
             windmillServo.setPower(0);
         }
     }
