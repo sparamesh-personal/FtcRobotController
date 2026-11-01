@@ -140,12 +140,12 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
     private int launchedPollenCount = 0;
     private boolean movementInitialized = false;
 
-    private static final double POLLEN_LAUNCH_POWER = 0.50;
+    private static final double POLLEN_LAUNCH_POWER = 0.59;
     private static final double SPIN_UP_SECONDS = 1.50;
     private static final double FEED_SECONDS = 1.00;
     private static final double PAUSE_SECONDS = 0.30;
-    private static final double FORWARD_TIME_SECONDS = 3.0;
-    private static final double STRAFE_RIGHT_TIME_SECONDS = 3.0;
+    private static final double FORWARD_TIME_SECONDS = 3.3;
+    private static final double STRAFE_RIGHT_TIME_SECONDS = 2.8;
 
     /*
      * This code runs ONCE when the driver hits INIT.
