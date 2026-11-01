@@ -144,8 +144,8 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
     private static final double SPIN_UP_SECONDS = 1.50;
     private static final double FEED_SECONDS = 1.00;
     private static final double PAUSE_SECONDS = 0.30;
-    private static final double FORWARD_TIME_SECONDS = 2.0;
-    private static final double STRAFE_LEFT_TIME_SECONDS = 1.0;
+    private static final double FORWARD_TIME_SECONDS = 3.0;
+    private static final double STRAFE_LEFT_TIME_SECONDS = 2.0;
 
     /*
      * This code runs ONCE when the driver hits INIT.
