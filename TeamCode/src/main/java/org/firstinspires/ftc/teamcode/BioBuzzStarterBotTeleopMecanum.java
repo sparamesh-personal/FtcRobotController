@@ -39,8 +39,8 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
      * in the launch() function to only run the windmill servo when the motor is spinning fast
      * enough to make a successful throw.
      */
-    public final double POLLEN_LAUNCHER_POWER = 0.62;
-    public final double NECTAR_LAUNCHER_POWER = 0.60;
+    public final double POLLEN_LAUNCHER_POWER = 0.58;
+    public final double NECTAR_LAUNCHER_POWER = 0.59;
     private static final double SPIN_UP_TIME_SECONDS = 1.50;
     private static final double FEED_TIME_SECONDS = 1.00;
     private static final double FEED_POWER = 0.80;
