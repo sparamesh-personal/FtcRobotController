@@ -44,8 +44,9 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
     private static final double SPIN_UP_TIME_SECONDS = 1.50;
     private static final double FEED_TIME_SECONDS = 1.00;
     private static final double FEED_POWER = 0.80;
-    private static final double LAUNCHER_STICK_TRIM_RATE = 0.05;
+    private static final double LAUNCHER_STICK_TRIM_STEP = 0.05;
     private static final double LAUNCHER_STICK_DEADBAND = 0.05;
+    private static final double LAUNCHER_STICK_STEP_SECONDS = 0.20;
 
     private enum LaunchState {
         IDLE,
@@ -271,8 +272,11 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
                 launcherBasePower, launcherPower, launcher.getPower());
         telemetry.addData("Launcher Stick Raw", "x %.2f | y %.2f",
                 gamepad1.right_stick_x, gamepad1.right_stick_y);
-        telemetry.addData("Launcher Stick Trim", "%.2f (hold up/down to tune)",
-                launcherStickTrim);
+        telemetry.addData("Launcher Stick Action",
+                gamepad1.right_stick_y < -LAUNCHER_STICK_DEADBAND ? "UP = increase 0.05" :
+                gamepad1.right_stick_y > LAUNCHER_STICK_DEADBAND ? "DOWN = decrease 0.05" : "centered = no change");
+        telemetry.addData("Launcher Stick Trim", "%.2f (one 0.05 step every %.2f s)",
+                launcherStickTrim, LAUNCHER_STICK_STEP_SECONDS);
         telemetry.addData("Launcher Motor", "mode %s | position %d | velocity %.0f ticks/s",
                 launcher.getMode(), launcher.getCurrentPosition(), launcher.getVelocity());
         telemetry.addData("Spin-Up Progress", "%.2f of %.2f seconds",
@@ -332,16 +336,18 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
 
     private void updateLauncherStickTrim() {
         double elapsedSeconds = launcherTrimTimer.seconds();
-        launcherTrimTimer.reset();
-        if (elapsedSeconds <= 0) {
+        double stickY = gamepad1.right_stick_y;
+
+        if (Math.abs(stickY) < LAUNCHER_STICK_DEADBAND || elapsedSeconds < LAUNCHER_STICK_STEP_SECONDS) {
             return;
         }
 
-        double stickY = gamepad1.right_stick_y;
-        if (Math.abs(stickY) >= LAUNCHER_STICK_DEADBAND) {
-            launcherStickTrim += -stickY * LAUNCHER_STICK_TRIM_RATE * elapsedSeconds;
-            launcherStickTrim = Math.max(-0.50, Math.min(0.50, launcherStickTrim));
-        }
+        // FTC up is negative stick Y. Add or subtract one clearly visible 0.05 step.
+        double direction = Math.signum(-stickY);
+        int steps = (int) (elapsedSeconds / LAUNCHER_STICK_STEP_SECONDS);
+        launcherStickTrim += direction * LAUNCHER_STICK_TRIM_STEP * steps;
+        launcherStickTrim = Math.max(-0.50, Math.min(0.50, launcherStickTrim));
+        launcherTrimTimer.reset();
     }
 
     private double getLauncherStickTrim() {
