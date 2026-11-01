@@ -44,8 +44,8 @@ public class BioBuzzStarterBotTeleopMecanumContinuousLaunch extends OpMode {
     private static final double SPIN_UP_TIME_SECONDS = 1.50;
     private static final double FEED_TIME_SECONDS = 1.00;
     private static final double FEED_POWER = 0.80;
-    private static final double LAUNCHER_STICK_TRIM_RATE = 0.05;
-    private static final double LAUNCHER_STICK_DEADBAND = 0.05;
+    private static final double LAUNCHER_DPAD_TRIM_STEP = 0.01;
+    private static final double LAUNCHER_DPAD_STEP_SECONDS = 0.20;
 
     private enum LaunchState {
         IDLE,
@@ -209,7 +209,7 @@ public class BioBuzzStarterBotTeleopMecanumContinuousLaunch extends OpMode {
     @Override
     public void loop() {
         updateEncoderRates();
-        updateLauncherStickTrim();
+        updateLauncherDpadTrim();
 
         /*
          * Here we call a function called mecanumDrive. The mecanumDrive function takes the input from
@@ -274,10 +274,11 @@ public class BioBuzzStarterBotTeleopMecanumContinuousLaunch extends OpMode {
         telemetry.addData("Launcher Power", "base %.2f | adjusted %.2f | motor %.2f",
                 launcherBasePower, launcherPower, launcher.getPower());
         telemetry.addData("Continuous Launch", continuousLaunchRunning ? "ON (left=pollen, right=nectar, B=stop)" : "OFF");
-        telemetry.addData("Launcher Stick Raw", "x %.2f | y %.2f",
-                gamepad1.right_stick_x, gamepad1.right_stick_y);
-        telemetry.addData("Launcher Stick Trim", "%.2f (hold up/down to tune)",
-                launcherStickTrim);
+        telemetry.addData("Launcher D-pad",
+                gamepad1.dpad_up ? "UP = increase 0.01" :
+                gamepad1.dpad_down ? "DOWN = decrease 0.01" : "centered = no change");
+        telemetry.addData("Launcher D-pad Trim", "%.2f (one 0.01 step every %.2f s)",
+                launcherStickTrim, LAUNCHER_DPAD_STEP_SECONDS);
         telemetry.addData("Launcher Motor", "mode %s | position %d | velocity %.0f ticks/s",
                 launcher.getMode(), launcher.getCurrentPosition(), launcher.getVelocity());
         telemetry.addData("Spin-Up Progress", "%.2f of %.2f seconds",
@@ -337,18 +338,19 @@ public class BioBuzzStarterBotTeleopMecanumContinuousLaunch extends OpMode {
         rightBackDrive.setPower(rightBackPower);
     }
 
-    private void updateLauncherStickTrim() {
+    private void updateLauncherDpadTrim() {
         double elapsedSeconds = launcherTrimTimer.seconds();
-        launcherTrimTimer.reset();
-        if (elapsedSeconds <= 0) {
+
+        if ((!gamepad1.dpad_up && !gamepad1.dpad_down)
+                || elapsedSeconds < LAUNCHER_DPAD_STEP_SECONDS) {
             return;
         }
 
-        double stickY = gamepad1.right_stick_y;
-        if (Math.abs(stickY) >= LAUNCHER_STICK_DEADBAND) {
-            launcherStickTrim += -stickY * LAUNCHER_STICK_TRIM_RATE * elapsedSeconds;
-            launcherStickTrim = Math.max(-0.50, Math.min(0.50, launcherStickTrim));
-        }
+        double direction = gamepad1.dpad_up ? 1.0 : -1.0;
+        int steps = (int) (elapsedSeconds / LAUNCHER_DPAD_STEP_SECONDS);
+        launcherStickTrim += direction * LAUNCHER_DPAD_TRIM_STEP * steps;
+        launcherStickTrim = Math.max(-0.50, Math.min(0.50, launcherStickTrim));
+        launcherTrimTimer.reset();
     }
 
     private double getLauncherStickTrim() {
