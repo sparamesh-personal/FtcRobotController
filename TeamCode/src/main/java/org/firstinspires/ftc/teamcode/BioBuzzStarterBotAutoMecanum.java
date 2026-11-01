@@ -40,7 +40,6 @@ import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -67,19 +66,6 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 public class BioBuzzStarterBotAutoMecanum extends OpMode
 {
     /*
-     * These two variables are used to control the velocity of the launcher motor.
-     * They are both in encoder ticks per second. The motors we use in the FIRST Tech Challenge
-     * have encoders with a resolution of 28 ticks per revolution. We can convert this to RPM
-     * by dividing the value by 28, to get to revolutions per second, before multiplying by 60
-     * to get revolutions per minute.
-     * We pass the target velocity variable to our motor to set the goal. We use the min velocity
-     * in the launch() function to only run the windmill servo when the motor is spinning fast
-     * enough to make a successful throw.
-     */
-    public final int LAUNCHER_TARGET_VELOCITY = 1250;
-    public final int LAUNCHER_MIN_VELOCITY = 1200;
-
-    /*
      * Here we capture a few variables used in driving the robot. DRIVE_SPEED and ROTATE_SPEED
      * are from 0-1, with 1 being full speed. Encoder ticks per revolution is specific to the motor
      * ratio that we use in the kit; if you're using a different motor, this value can be found on
@@ -105,6 +91,7 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
      */
     private ElapsedTime driveTimer = new ElapsedTime();
     private ElapsedTime autoTimer = new ElapsedTime();
+    private ElapsedTime launchTimer = new ElapsedTime();
 
     // Declare OpMode members.
     private DcMotor leftFrontDrive = null;
@@ -130,8 +117,15 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
      */
     private enum AutonomousState {
         LAUNCH,
-        DRIVE,
+        DRIVE_FORWARD,
+        STRAFE_LEFT,
         COMPLETE
+    }
+
+    private enum LaunchState {
+        SPIN_UP,
+        FEED,
+        PAUSE
     }
 
     /*
@@ -141,6 +135,16 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
      * Here we just have one.
      */
     private AutonomousState autonomousState;
+    private LaunchState launchState;
+    private int launchedPollenCount = 0;
+    private boolean movementInitialized = false;
+
+    private static final double POLLEN_LAUNCH_POWER = 0.62;
+    private static final double SPIN_UP_SECONDS = 1.50;
+    private static final double FEED_SECONDS = 1.00;
+    private static final double PAUSE_SECONDS = 0.30;
+    private static final double FORWARD_DISTANCE_MM = 3048.0;
+    private static final double LEFT_DISTANCE_MM = 914.4;
 
     /*
      * This code runs ONCE when the driver hits INIT.
@@ -154,6 +158,9 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
          * We do the same for our launcher state machine, setting it to IDLE before we use it later.
          */
         autonomousState = AutonomousState.LAUNCH;
+        launchState = LaunchState.SPIN_UP;
+        launchedPollenCount = 0;
+        movementInitialized = false;
 
 
         /*
@@ -202,9 +209,9 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
          * into the port right beside the motor itself. And that the motors polarity is consistent
          * through any wiring.
          */
-        launcher.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        launcher.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(40, 0, 0, 12.5));
+        // Use fixed pollen power because this starter robot's launcher encoder is unreliable.
+        launcher.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        launcher.setPower(0);
 
         /*
          * set Feeders to an initial value to initialize the servo controller
@@ -237,6 +244,9 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
     @Override
     public void start() {
         autoTimer.reset();
+        launchTimer.reset();
+        launchState = LaunchState.SPIN_UP;
+        launchedPollenCount = 0;
     }
 
     /*
@@ -255,19 +265,39 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
          */
         switch (autonomousState) {
             case LAUNCH:
-                launch(true);
-                if(autoTimer.seconds() > 10){
-                    launch(false);
+                if (launchFourPollen()) {
+                    launcher.setPower(0);
+                    windmillServo.setPower(0);
                     intakePower = 0;
-                    autonomousState = AutonomousState.DRIVE;
+                    autonomousState = AutonomousState.DRIVE_FORWARD;
+                    movementInitialized = false;
+                    driveTimer.reset();
                 }
                 break;
-            case DRIVE:
-                if(drive(DRIVE_SPEED, -120, DistanceUnit.MM, 2)){
+            case DRIVE_FORWARD:
+                if (!movementInitialized) {
+                    resetDriveEncoders();
+                    movementInitialized = true;
+                    driveTimer.reset();
+                }
+                if (drive(DRIVE_SPEED, FORWARD_DISTANCE_MM, DistanceUnit.MM, 1.0)) {
+                    autonomousState = AutonomousState.STRAFE_LEFT;
+                    movementInitialized = false;
+                    driveTimer.reset();
+                }
+                break;
+            case STRAFE_LEFT:
+                if (!movementInitialized) {
+                    resetDriveEncoders();
+                    movementInitialized = true;
+                    driveTimer.reset();
+                }
+                if (strafe(DRIVE_SPEED, -LEFT_DISTANCE_MM, DistanceUnit.MM, 1.0)) {
                     autonomousState = AutonomousState.COMPLETE;
                 }
                 break;
             case COMPLETE:
+                setDrivePower(0);
                 telemetry.addLine("Auto Complete!");
                 break;
         }
@@ -298,21 +328,68 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
      */
     @Override
     public void stop() {
+        launcher.setPower(0);
+        windmillServo.setPower(0);
+        intake.setPower(0);
+        setDrivePower(0);
     }
 
-    void launch(boolean input) {
-        if (input) {
-            launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
-        } else {
-            launcher.setVelocity(0);
+    boolean launchFourPollen() {
+        switch (launchState) {
+            case SPIN_UP:
+                launcher.setPower(POLLEN_LAUNCH_POWER);
+                windmillServo.setPower(0);
+                intakePower = 0;
+                if (launchTimer.seconds() >= SPIN_UP_SECONDS) {
+                    launchState = LaunchState.FEED;
+                    launchTimer.reset();
+                }
+                break;
+
+            case FEED:
+                launcher.setPower(POLLEN_LAUNCH_POWER);
+                windmillServo.setPower(1);
+                intakePower = 0.5;
+                if (launchTimer.seconds() >= FEED_SECONDS) {
+                    launchedPollenCount++;
+                    windmillServo.setPower(0);
+                    intakePower = 0;
+                    launchState = LaunchState.PAUSE;
+                    launchTimer.reset();
+                }
+                break;
+
+            case PAUSE:
+                launcher.setPower(POLLEN_LAUNCH_POWER);
+                windmillServo.setPower(0);
+                intakePower = 0;
+                if (launchTimer.seconds() >= PAUSE_SECONDS) {
+                    if (launchedPollenCount >= 4) {
+                        return true;
+                    }
+                    launchState = LaunchState.FEED;
+                    launchTimer.reset();
+                }
+                break;
         }
 
-        if (input && launcher.getVelocity() > LAUNCHER_MIN_VELOCITY) {
-            windmillServo.setPower(1);
-            intakePower += 0.5;
-        } else {
-            windmillServo.setPower(0);
-        }
+        telemetry.addData("Launch State", launchState);
+        telemetry.addData("Pollen Launched", launchedPollenCount + "/4");
+        return false;
+    }
+
+    void resetDriveEncoders() {
+        leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+    }
+
+    void setDrivePower(double power) {
+        leftFrontDrive.setPower(power);
+        rightFrontDrive.setPower(power);
+        leftBackDrive.setPower(power);
+        rightBackDrive.setPower(power);
     }
 
     /**
@@ -365,7 +442,7 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
         return (driveTimer.seconds() > holdSeconds);
     }
 
-    void strafe(double speed, double distance, DistanceUnit distanceUnit, double holdSeconds) {
+    boolean strafe(double speed, double distance, DistanceUnit distanceUnit, double holdSeconds) {
         final double TOLERANCE_MM = 10;
         double targetPosition = distanceUnit.toMm(distance) * TICKS_PER_MM;
 
@@ -384,9 +461,12 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
         leftBackDrive.setPower(speed);
         rightBackDrive.setPower(speed);
 
-        if (Math.abs(targetPosition - Math.abs(leftFrontDrive.getCurrentPosition())) > (TOLERANCE_MM * TICKS_PER_MM)) {
+        double leftTargetPosition = -targetPosition;
+        if (Math.abs(leftTargetPosition - leftFrontDrive.getCurrentPosition()) > (TOLERANCE_MM * TICKS_PER_MM)) {
             driveTimer.reset();
         }
+
+        return driveTimer.seconds() > holdSeconds;
     }
 
     /**
