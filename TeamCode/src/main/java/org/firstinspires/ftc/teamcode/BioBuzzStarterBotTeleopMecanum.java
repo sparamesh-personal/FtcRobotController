@@ -40,7 +40,7 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
      * enough to make a successful throw.
      */
     public final double POLLEN_LAUNCHER_POWER = 0.40;
-    public final double NECTAR_LAUNCHER_POWER = 0.58;
+    public final double NECTAR_LAUNCHER_POWER = 0.60;
     private static final double SPIN_UP_TIME_SECONDS = 1.50;
     private static final double FEED_TIME_SECONDS = 1.00;
     private static final double FEED_POWER = 0.80;
