@@ -119,7 +119,7 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
     private enum AutonomousState {
         LAUNCH,
         DRIVE_FORWARD,
-        STRAFE_LEFT,
+        STRAFE_RIGHT,
         COMPLETE
     }
 
@@ -145,7 +145,7 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
     private static final double FEED_SECONDS = 1.00;
     private static final double PAUSE_SECONDS = 0.30;
     private static final double FORWARD_TIME_SECONDS = 3.0;
-    private static final double STRAFE_LEFT_TIME_SECONDS = 2.0;
+    private static final double STRAFE_RIGHT_TIME_SECONDS = 3.0;
 
     /*
      * This code runs ONCE when the driver hits INIT.
@@ -285,17 +285,17 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
                     movementTimer.reset();
                 }
                 if (driveForwardTimed(DRIVE_SPEED, FORWARD_TIME_SECONDS)) {
-                    autonomousState = AutonomousState.STRAFE_LEFT;
+                    autonomousState = AutonomousState.STRAFE_RIGHT;
                     movementInitialized = false;
                     movementTimer.reset();
                 }
                 break;
-            case STRAFE_LEFT:
+            case STRAFE_RIGHT:
                 if (!movementInitialized) {
                     movementInitialized = true;
                     movementTimer.reset();
                 }
-                if (strafeLeftTimed(DRIVE_SPEED, STRAFE_LEFT_TIME_SECONDS)) {
+                if (strafeRightTimed(DRIVE_SPEED, STRAFE_RIGHT_TIME_SECONDS)) {
                     autonomousState = AutonomousState.COMPLETE;
                 }
                 break;
@@ -424,16 +424,16 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
         return false;
     }
 
-    boolean strafeLeftTimed(double speed, double seconds) {
+    boolean strafeRightTimed(double speed, double seconds) {
         leftFrontDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         rightFrontDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         leftBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         rightBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
-        leftFrontDrive.setPower(speed);
-        rightFrontDrive.setPower(-speed);
-        leftBackDrive.setPower(-speed);
-        rightBackDrive.setPower(speed);
+        leftFrontDrive.setPower(-speed);
+        rightFrontDrive.setPower(speed);
+        leftBackDrive.setPower(speed);
+        rightBackDrive.setPower(-speed);
 
         if (movementTimer.seconds() >= seconds) {
             setDrivePower(0);
