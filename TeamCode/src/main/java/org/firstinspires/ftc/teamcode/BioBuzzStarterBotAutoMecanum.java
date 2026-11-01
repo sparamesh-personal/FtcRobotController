@@ -92,6 +92,7 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
     private ElapsedTime driveTimer = new ElapsedTime();
     private ElapsedTime autoTimer = new ElapsedTime();
     private ElapsedTime launchTimer = new ElapsedTime();
+    private ElapsedTime movementTimer = new ElapsedTime();
 
     // Declare OpMode members.
     private DcMotor leftFrontDrive = null;
@@ -139,12 +140,12 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
     private int launchedPollenCount = 0;
     private boolean movementInitialized = false;
 
-    private static final double POLLEN_LAUNCH_POWER = 0.58;
+    private static final double POLLEN_LAUNCH_POWER = 0.50;
     private static final double SPIN_UP_SECONDS = 1.50;
     private static final double FEED_SECONDS = 1.00;
     private static final double PAUSE_SECONDS = 0.30;
-    private static final double FORWARD_DISTANCE_MM = 3048.0;
-    private static final double LEFT_DISTANCE_MM = 914.4;
+    private static final double FORWARD_TIME_SECONDS = 2.0;
+    private static final double STRAFE_LEFT_TIME_SECONDS = 1.0;
 
     /*
      * This code runs ONCE when the driver hits INIT.
@@ -248,6 +249,7 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
     public void start() {
         autoTimer.reset();
         launchTimer.reset();
+        movementTimer.reset();
         launchState = LaunchState.SPIN_UP;
         launchedPollenCount = 0;
     }
@@ -279,23 +281,21 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
                 break;
             case DRIVE_FORWARD:
                 if (!movementInitialized) {
-                    resetDriveEncoders();
                     movementInitialized = true;
-                    driveTimer.reset();
+                    movementTimer.reset();
                 }
-                if (drive(DRIVE_SPEED, FORWARD_DISTANCE_MM, DistanceUnit.MM, 1.0)) {
+                if (driveForwardTimed(DRIVE_SPEED, FORWARD_TIME_SECONDS)) {
                     autonomousState = AutonomousState.STRAFE_LEFT;
                     movementInitialized = false;
-                    driveTimer.reset();
+                    movementTimer.reset();
                 }
                 break;
             case STRAFE_LEFT:
                 if (!movementInitialized) {
-                    resetDriveEncoders();
                     movementInitialized = true;
-                    driveTimer.reset();
+                    movementTimer.reset();
                 }
-                if (strafe(DRIVE_SPEED, -LEFT_DISTANCE_MM, DistanceUnit.MM, 1.0)) {
+                if (strafeLeftTimed(DRIVE_SPEED, STRAFE_LEFT_TIME_SECONDS)) {
                     autonomousState = AutonomousState.COMPLETE;
                 }
                 break;
@@ -319,6 +319,8 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
          *
          */
         telemetry.addData("AutoState", autonomousState);
+        telemetry.addData("Movement Timer", "%.2f s",
+                movementInitialized ? movementTimer.seconds() : 0.0);
         telemetry.addData("Launcher", "p %.2f | position %d",
                 launcher.getPower(), launcher.getCurrentPosition());
         telemetry.addData("Windmill", "p %.2f", windmillServo.getPower());
@@ -402,6 +404,42 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
         rightFrontDrive.setPower(power);
         leftBackDrive.setPower(power);
         rightBackDrive.setPower(power);
+    }
+
+    boolean driveForwardTimed(double speed, double seconds) {
+        leftFrontDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightFrontDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        leftBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        leftFrontDrive.setPower(speed);
+        rightFrontDrive.setPower(speed);
+        leftBackDrive.setPower(speed);
+        rightBackDrive.setPower(speed);
+
+        if (movementTimer.seconds() >= seconds) {
+            setDrivePower(0);
+            return true;
+        }
+        return false;
+    }
+
+    boolean strafeLeftTimed(double speed, double seconds) {
+        leftFrontDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightFrontDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        leftBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        leftFrontDrive.setPower(speed);
+        rightFrontDrive.setPower(-speed);
+        leftBackDrive.setPower(-speed);
+        rightBackDrive.setPower(speed);
+
+        if (movementTimer.seconds() >= seconds) {
+            setDrivePower(0);
+            return true;
+        }
+        return false;
     }
 
     /**
