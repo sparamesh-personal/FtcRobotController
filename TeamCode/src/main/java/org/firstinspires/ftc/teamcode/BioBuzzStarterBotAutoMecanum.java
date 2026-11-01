@@ -139,7 +139,7 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
     private int launchedPollenCount = 0;
     private boolean movementInitialized = false;
 
-    private static final double POLLEN_LAUNCH_POWER = 0.62;
+    private static final double POLLEN_LAUNCH_POWER = 0.58;
     private static final double SPIN_UP_SECONDS = 1.50;
     private static final double FEED_SECONDS = 1.00;
     private static final double PAUSE_SECONDS = 0.30;
@@ -178,9 +178,9 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
         leftIntakeServo = hardwareMap.get(CRServo.class, "left_intake_servo");
         rightIntakeServo = hardwareMap.get(CRServo.class, "right_intake_servo");
 
-        leftFrontDrive.setDirection(DcMotor.Direction.REVERSE);
-        rightFrontDrive.setDirection(DcMotor.Direction.FORWARD);
-        leftBackDrive.setDirection(DcMotor.Direction.REVERSE);
+        leftFrontDrive.setDirection(DcMotor.Direction.FORWARD);
+        rightFrontDrive.setDirection(DcMotor.Direction.REVERSE);
+        leftBackDrive.setDirection(DcMotor.Direction.FORWARD);
         rightBackDrive.setDirection(DcMotor.Direction.FORWARD);
 
         /*
@@ -209,7 +209,8 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
          * into the port right beside the motor itself. And that the motors polarity is consistent
          * through any wiring.
          */
-        // Use fixed pollen power because this starter robot's launcher encoder is unreliable.
+        // Match the launcher configuration used by MecanumTeleop.
+        launcher.setDirection(DcMotorSimple.Direction.REVERSE);
         launcher.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         launcher.setPower(0);
 
@@ -224,8 +225,10 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
          * Much like our drivetrain motors, we set the right intake servo to reverse so that both
          * servos work to pull elements into the intake.
          */
-        rightIntakeServo.setDirection(DcMotorSimple.Direction.REVERSE);
-        windmillServo.setDirection(DcMotorSimple.Direction.REVERSE);
+        leftIntakeServo.setDirection(DcMotorSimple.Direction.FORWARD);
+        rightIntakeServo.setDirection(DcMotorSimple.Direction.FORWARD);
+        windmillServo.setDirection(DcMotorSimple.Direction.FORWARD);
+        intake.setDirection(DcMotorSimple.Direction.FORWARD);
 
         // Tell the driver that initialization is complete.
         telemetry.addData("Status", "Initialized");
@@ -303,6 +306,8 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
         }
 
         intake.setPower(intakePower);
+        leftIntakeServo.setPower(intakePower);
+        rightIntakeServo.setPower(intakePower);
 
         /*
          * Here is our telemetry that keeps us informed of what is going on in the robot. Since this
@@ -314,6 +319,11 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
          *
          */
         telemetry.addData("AutoState", autonomousState);
+        telemetry.addData("Launcher", "p %.2f | position %d",
+                launcher.getPower(), launcher.getCurrentPosition());
+        telemetry.addData("Windmill", "p %.2f", windmillServo.getPower());
+        telemetry.addData("Intake", "motor p %.2f | servos left %.2f right %.2f",
+                intake.getPower(), leftIntakeServo.getPower(), rightIntakeServo.getPower());
         telemetry.addData("Motor Current Positions", "LF (%d), RF (%d), LB (%d), RB (%d)",
                 leftFrontDrive.getCurrentPosition(), rightFrontDrive.getCurrentPosition(),
                 leftBackDrive.getCurrentPosition(), rightBackDrive.getCurrentPosition());
@@ -331,6 +341,8 @@ public class BioBuzzStarterBotAutoMecanum extends OpMode
         launcher.setPower(0);
         windmillServo.setPower(0);
         intake.setPower(0);
+        leftIntakeServo.setPower(0);
+        rightIntakeServo.setPower(0);
         setDrivePower(0);
     }
 
