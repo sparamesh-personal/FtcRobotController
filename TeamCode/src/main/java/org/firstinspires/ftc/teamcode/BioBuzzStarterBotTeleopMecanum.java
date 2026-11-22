@@ -44,8 +44,7 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
     private static final double SPIN_UP_TIME_SECONDS = 1.50;
     private static final double FEED_TIME_SECONDS = 1.00;
     private static final double FEED_POWER = 0.80;
-    private static final double LAUNCHER_DPAD_TRIM_STEP = 0.01;
-    private static final double LAUNCHER_DPAD_STEP_SECONDS = 0.20;
+    private static final double LAUNCHER_DPAD_TRIM_STEP = 0.05;
 
     private enum LaunchState {
         IDLE,
@@ -59,10 +58,11 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
     private double launcherStickTrim;
     private boolean previousLeftBumper;
     private boolean previousRightBumper;
+    private boolean previousLauncherDpadUp;
+    private boolean previousLauncherDpadDown;
     private String selectedArtifact = "None";
     private final ElapsedTime feedTimer = new ElapsedTime();
     private final ElapsedTime spinUpTimer = new ElapsedTime();
-    private final ElapsedTime launcherTrimTimer = new ElapsedTime();
 
 
     /*
@@ -188,10 +188,11 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         previousRightBackPosition = rightBackDrive.getCurrentPosition();
         previousIntakePosition = intake.getCurrentPosition();
         encoderSampleTimer.reset();
-        launcherTrimTimer.reset();
         launcherStickTrim = 0;
         previousLeftBumper = false;
         previousRightBumper = false;
+        previousLauncherDpadUp = false;
+        previousLauncherDpadDown = false;
         launchState = LaunchState.IDLE;
         selectedArtifact = "None";
         launcherBasePower = 0;
@@ -231,7 +232,7 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
          * allow us to avoid setting the same motors/servos power more than once per loop. That can
          * create erratic behavior.
          */
-        intakePower = gamepad2.right_trigger - gamepad2.left_trigger;
+        intakePower = gamepad1.right_trigger - gamepad1.left_trigger;
 
         launch();
 
@@ -270,10 +271,9 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         telemetry.addData("Launcher Power", "base %.2f | adjusted %.2f | motor %.2f",
                 launcherBasePower, launcherPower, launcher.getPower());
         telemetry.addData("Launcher D-pad",
-                gamepad2.dpad_up ? "UP = increase 0.01" :
-                gamepad2.dpad_down ? "DOWN = decrease 0.01" : "centered = no change");
-        telemetry.addData("Launcher D-pad Trim", "%.2f (one 0.01 step every %.2f s)",
-                launcherStickTrim, LAUNCHER_DPAD_STEP_SECONDS);
+                gamepad2.dpad_up ? "UP = increase 0.05" :
+                gamepad2.dpad_down ? "DOWN = decrease 0.05" : "centered = no change");
+        telemetry.addData("Launcher D-pad Trim", "%.2f (0.05 per click)", launcherStickTrim);
         telemetry.addData("Launcher Motor", "mode %s | position %d | velocity %.0f ticks/s",
                 launcher.getMode(), launcher.getCurrentPosition(), launcher.getVelocity());
         telemetry.addData("Spin-Up Progress", "%.2f of %.2f seconds",
@@ -287,7 +287,7 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
                 gamepad2.left_bumper ? "pressed" : "released",
                 gamepad2.right_bumper ? "pressed" : "released");
         telemetry.addData("Intake Triggers", "in %.2f | reverse %.2f | final p %.2f",
-                gamepad2.right_trigger, gamepad2.left_trigger, intake.getPower());
+                gamepad1.right_trigger, gamepad1.left_trigger, intake.getPower());
         telemetry.update();
     }
 
@@ -332,18 +332,15 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
     }
 
     private void updateLauncherDpadTrim() {
-        double elapsedSeconds = launcherTrimTimer.seconds();
-
-        if ((!gamepad2.dpad_up && !gamepad2.dpad_down)
-                || elapsedSeconds < LAUNCHER_DPAD_STEP_SECONDS) {
-            return;
+        if (gamepad2.dpad_up && !previousLauncherDpadUp) {
+            launcherStickTrim += LAUNCHER_DPAD_TRIM_STEP;
+        } else if (gamepad2.dpad_down && !previousLauncherDpadDown) {
+            launcherStickTrim -= LAUNCHER_DPAD_TRIM_STEP;
         }
-
-        double direction = gamepad2.dpad_up ? 1.0 : -1.0;
-        int steps = (int) (elapsedSeconds / LAUNCHER_DPAD_STEP_SECONDS);
-        launcherStickTrim += direction * LAUNCHER_DPAD_TRIM_STEP * steps;
         launcherStickTrim = Math.max(-0.50, Math.min(0.50, launcherStickTrim));
-        launcherTrimTimer.reset();
+
+        previousLauncherDpadUp = gamepad2.dpad_up;
+        previousLauncherDpadDown = gamepad2.dpad_down;
     }
 
     private double getLauncherStickTrim() {
