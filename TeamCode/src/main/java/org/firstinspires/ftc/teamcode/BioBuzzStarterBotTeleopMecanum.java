@@ -231,7 +231,7 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
          * allow us to avoid setting the same motors/servos power more than once per loop. That can
          * create erratic behavior.
          */
-        intakePower = gamepad1.right_trigger - gamepad1.left_trigger;
+        intakePower = gamepad2.right_trigger - gamepad2.left_trigger;
 
         launch();
 
@@ -270,8 +270,8 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         telemetry.addData("Launcher Power", "base %.2f | adjusted %.2f | motor %.2f",
                 launcherBasePower, launcherPower, launcher.getPower());
         telemetry.addData("Launcher D-pad",
-                gamepad1.dpad_up ? "UP = increase 0.01" :
-                gamepad1.dpad_down ? "DOWN = decrease 0.01" : "centered = no change");
+                gamepad2.dpad_up ? "UP = increase 0.01" :
+                gamepad2.dpad_down ? "DOWN = decrease 0.01" : "centered = no change");
         telemetry.addData("Launcher D-pad Trim", "%.2f (one 0.01 step every %.2f s)",
                 launcherStickTrim, LAUNCHER_DPAD_STEP_SECONDS);
         telemetry.addData("Launcher Motor", "mode %s | position %d | velocity %.0f ticks/s",
@@ -284,10 +284,10 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
                 launchState == LaunchState.SPIN_UP ? spinUpTimer.seconds() : 0.0,
                 launchState == LaunchState.FEED ? feedTimer.seconds() : 0.0);
         telemetry.addData("Bumpers", "left %s | right %s",
-                gamepad1.left_bumper ? "pressed" : "released",
-                gamepad1.right_bumper ? "pressed" : "released");
+                gamepad2.left_bumper ? "pressed" : "released",
+                gamepad2.right_bumper ? "pressed" : "released");
         telemetry.addData("Intake Triggers", "in %.2f | reverse %.2f | final p %.2f",
-                gamepad1.right_trigger, gamepad1.left_trigger, intake.getPower());
+                gamepad2.right_trigger, gamepad2.left_trigger, intake.getPower());
         telemetry.update();
     }
 
@@ -334,12 +334,12 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
     private void updateLauncherDpadTrim() {
         double elapsedSeconds = launcherTrimTimer.seconds();
 
-        if ((!gamepad1.dpad_up && !gamepad1.dpad_down)
+        if ((!gamepad2.dpad_up && !gamepad2.dpad_down)
                 || elapsedSeconds < LAUNCHER_DPAD_STEP_SECONDS) {
             return;
         }
 
-        double direction = gamepad1.dpad_up ? 1.0 : -1.0;
+        double direction = gamepad2.dpad_up ? 1.0 : -1.0;
         int steps = (int) (elapsedSeconds / LAUNCHER_DPAD_STEP_SECONDS);
         launcherStickTrim += direction * LAUNCHER_DPAD_TRIM_STEP * steps;
         launcherStickTrim = Math.max(-0.50, Math.min(0.50, launcherStickTrim));
@@ -356,8 +356,8 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
     }
 
     void launch() {
-        boolean leftBumperPressed = gamepad1.left_bumper && !previousLeftBumper;
-        boolean rightBumperPressed = gamepad1.right_bumper && !previousRightBumper;
+        boolean leftBumperPressed = gamepad2.left_bumper && !previousLeftBumper;
+        boolean rightBumperPressed = gamepad2.right_bumper && !previousRightBumper;
 
         if (launchState == LaunchState.IDLE && leftBumperPressed) {
             launcherBasePower = POLLEN_LAUNCHER_POWER;
@@ -373,8 +373,8 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
             spinUpTimer.reset();
         }
 
-        previousLeftBumper = gamepad1.left_bumper;
-        previousRightBumper = gamepad1.right_bumper;
+        previousLeftBumper = gamepad2.left_bumper;
+        previousRightBumper = gamepad2.right_bumper;
 
         if (launchState != LaunchState.IDLE) {
             launcherPower = adjustedLauncherPower();
@@ -406,9 +406,9 @@ public class BioBuzzStarterBotTeleopMecanum extends OpMode {
         } else {
             launcher.setPower(0);
 
-            if (gamepad1.a) {
+            if (gamepad2.a) {
                 windmillServo.setPower(FEED_POWER);    // manual feed
-            } else if (gamepad1.b) {
+            } else if (gamepad2.b) {
                 windmillServo.setPower(-FEED_POWER);   // manual reverse, to clear jams
             } else {
                 windmillServo.setPower(0);
